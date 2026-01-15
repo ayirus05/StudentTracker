@@ -1,2 +1,6 @@
 # StudentTracker
-Website to track students' progress (award points to students, track their submissions of assignments and results (visual diagram), pictures of students next to names (classify by classes), 
+Website to track students' progress 
+Features:
+1) Point system for students and classes
+2) Tracking of assignment submissions and results (Visual Diagrams)
+3) Ranking for different classes and students
