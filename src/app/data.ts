@@ -5,6 +5,7 @@ export type Student = {
   photoUrl?: string;
   points: number;
   assignmentsCompleted: number;
+  manualPoints: number;
 };
 
 export type Class = {
@@ -24,6 +25,13 @@ export type Assignment = {
   classIds: string[];
   totalPoints: number;
   submissions: Submission[];
+};
+
+export type Exam = {
+  id: string;
+  title: string;
+  maxScore: number;
+  results: { studentId: string; score: number }[];
 };
 
 // Initial Data

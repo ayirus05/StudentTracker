@@ -10,30 +10,36 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Plus
+  Plus,
+  FileText,
+  Star
 } from "lucide-react";
 import { 
   initialClasses,
   initialStudents,
   Student,
   Class,
-  Assignment
+  Assignment,
+  Exam
 } from "./data";
 import { 
   AssignmentPerformanceChart, 
-  ClassRankingChart 
+  ClassRankingChart,
+  StudentExamChart
 } from "./AnalyticsChart";
 import StudentTable from "./StudentTable";
 
 export default function Dashboard() {
   // --- State Management ---
-  const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams">("dashboard");
   const [classes, setClasses] = useState<Class[]>(initialClasses);
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]); 
+  const [exams, setExams] = useState<Exam[]>([]);
   
   // Selection State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedStudentForStats, setSelectedStudentForStats] = useState<string | null>(null);
 
   // Form State
   const [newStudentName, setNewStudentName] = useState("");
@@ -42,6 +48,10 @@ export default function Dashboard() {
   const [newAssignmentPoints, setNewAssignmentPoints] = useState(100);
   const [selectedAssignmentClasses, setSelectedAssignmentClasses] = useState<string[]>([]);
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
+
+  // Exam Form State
+  const [newExamTitle, setNewExamTitle] = useState("");
+  const [newExamMaxScore, setNewExamMaxScore] = useState(100);
 
   // New Class State
   const [newClassName, setNewClassName] = useState("");
@@ -99,7 +109,7 @@ export default function Dashboard() {
         }
       });
 
-      return { ...student, points, assignmentsCompleted: completed };
+      return { ...student, points: points + (student.manualPoints || 0), assignmentsCompleted: completed };
     }));
   };
 
@@ -117,15 +127,15 @@ export default function Dashboard() {
       photoUrl,
       points: 0,
       assignmentsCompleted: 0,
+      manualPoints: 0,
     };
 
     setStudents([...students, newStudent]);
     setNewStudentName("");
     setNewStudentPhoto(null);
   };
-
   const handleAddClass = (e: React.FormEvent) => {
-    e.preventDefault();
+
     if (!newClassName) return;
 
     const newClass: Class = {
@@ -244,6 +254,60 @@ export default function Dashboard() {
     setExpandedAssignmentId(expandedAssignmentId === id ? null : id);
   };
 
+  // --- Class Points Handlers ---
+  const handleManualPointsChange = (studentId: string, delta: number) => {
+    setStudents(prev => prev.map(s => {
+      if (s.id !== studentId) return s;
+      const newManualPoints = (s.manualPoints || 0) + delta;
+      // Recalculate total points: (Current Total - Old Manual) + New Manual
+      // Note: s.points currently includes s.manualPoints.
+      const newTotalPoints = (s.points - (s.manualPoints || 0)) + newManualPoints;
+      return { ...s, manualPoints: newManualPoints, points: newTotalPoints };
+    }));
+  };
+
+  // --- Exam Handlers ---
+  const handleAddExam = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExamTitle) return;
+
+    const newExam: Exam = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: newExamTitle,
+      maxScore: newExamMaxScore,
+      results: []
+    };
+
+    setExams([...exams, newExam]);
+    setNewExamTitle("");
+    setNewExamMaxScore(100);
+  };
+
+  const handleExamScoreChange = (examId: string, studentId: string, score: number) => {
+    setExams(prev => prev.map(exam => {
+      if (exam.id !== examId) return exam;
+      
+      const existingResultIndex = exam.results.findIndex(r => r.studentId === studentId);
+      let newResults = [...exam.results];
+
+      if (existingResultIndex >= 0) {
+        newResults[existingResultIndex] = { ...newResults[existingResultIndex], score };
+      } else {
+        newResults.push({ studentId, score });
+      }
+
+      return { ...exam, results: newResults };
+    }));
+  };
+
+  const getStudentExamData = (studentId: string) => {
+    return exams.map(exam => {
+      const result = exam.results.find(r => r.studentId === studentId);
+      const percentage = result ? Math.round((result.score / exam.maxScore) * 100) : 0;
+      return { exam: exam.title, percentage };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black flex font-sans">
       {/* Sidebar Navigation */}
@@ -270,6 +334,18 @@ export default function Dashboard() {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'assignments' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <ClipboardList size={20} /> Assignments
+          </button>
+          <button 
+            onClick={() => setActiveTab("classPoints")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'classPoints' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+          >
+            <Star size={20} /> ClassPoints
+          </button>
+          <button 
+            onClick={() => setActiveTab("exams")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'exams' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+          >
+            <FileText size={20} /> Exams
           </button>
         </nav>
         <div className="p-4 border-t border-zinc-800">
@@ -310,7 +386,7 @@ export default function Dashboard() {
                     <ClipboardList size={24} />
                   </div>
                   <div>
-                    <p className="text-sm text-zinc-500 font-medium dark:text-zinc-400">Pending Assignments</p>
+                    <p className="text-lg font-bold text-zinc-700 dark:text-zinc-300">Pending Assignments</p>
                   </div>
                 </div>
                 <div className="space-y-2 pl-2">
@@ -569,6 +645,158 @@ export default function Dashboard() {
                 <p className="text-center text-zinc-500 py-8">No assignments created yet.</p>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === "classPoints" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {classes.map(cls => (
+                <button
+                  key={cls.id}
+                  onClick={() => setSelectedClassId(cls.id)}
+                  className={`p-6 rounded-xl border text-left transition-all ${
+                    selectedClassId === cls.id 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-900/20' 
+                      : 'bg-white text-zinc-900 border-zinc-200 hover:border-indigo-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100'
+                  }`}
+                >
+                  <h3 className="text-xl font-bold">{cls.name}</h3>
+                  <p className={`text-sm mt-1 ${selectedClassId === cls.id ? 'text-indigo-100' : 'text-zinc-500'}`}>
+                    {students.filter(s => s.classId === cls.id).length} Students
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {selectedClassId && (
+              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                    Manage Points: {classes.find(c => c.id === selectedClassId)?.name}
+                  </h3>
+                </div>
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {students.filter(s => s.classId === selectedClassId).map(student => (
+                    <div key={student.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-zinc-200 overflow-hidden flex items-center justify-center">
+                          {student.photoUrl ? <img src={student.photoUrl} className="h-full w-full object-cover" /> : <span className="text-xs font-bold">{student.name.charAt(0)}</span>}
+                        </div>
+                        <div>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{student.name}</p>
+                          <p className="text-xs text-zinc-500">Current Manual Points: <span className="font-bold text-indigo-600">{student.manualPoints || 0}</span></p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => handleManualPointsChange(student.id, -10)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold">-10</button>
+                        <button onClick={() => handleManualPointsChange(student.id, -1)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold">-1</button>
+                        <span className="w-12 text-center font-bold text-zinc-700 dark:text-zinc-300">{student.manualPoints || 0}</span>
+                        <button onClick={() => handleManualPointsChange(student.id, 1)} className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold">+1</button>
+                        <button onClick={() => handleManualPointsChange(student.id, 10)} className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold">+10</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "exams" && (
+          <div className="space-y-6">
+            {/* Create Exam */}
+            <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">Add New Exam</h3>
+              <form onSubmit={handleAddExam} className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Exam Title</label>
+                  <input 
+                    type="text" 
+                    value={newExamTitle}
+                    onChange={(e) => setNewExamTitle(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
+                    placeholder="e.g., Final Semester Exam"
+                  />
+                </div>
+                <div className="w-32">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Max Score</label>
+                  <input 
+                    type="number" 
+                    value={newExamMaxScore}
+                    onChange={(e) => setNewExamMaxScore(parseInt(e.target.value))}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
+                  />
+                </div>
+                <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Add Exam</button>
+              </form>
+            </div>
+
+            {/* Exam List */}
+            <div className="grid gap-4">
+              {exams.map(exam => (
+                <div key={exam.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+                  <div className="p-4 flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
+                    <div>
+                      <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{exam.title}</h4>
+                      <p className="text-sm text-zinc-500">Max Score: {exam.maxScore}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 dark:bg-zinc-800">
+                        <tr>
+                          <th className="px-4 py-2">Student</th>
+                          <th className="px-4 py-2">Score</th>
+                          <th className="px-4 py-2">Percentage</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {students.map(student => {
+                          const result = exam.results.find(r => r.studentId === student.id);
+                          const score = result?.score || 0;
+                          const percentage = Math.round((score / exam.maxScore) * 100);
+                          return (
+                            <tr key={student.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                              <td className="px-4 py-3 font-medium text-indigo-600 cursor-pointer hover:underline" onClick={() => setSelectedStudentForStats(student.id)}>
+                                {student.name}
+                              </td>
+                              <td className="px-4 py-3">
+                                <input 
+                                  type="number" 
+                                  value={result?.score ?? ""}
+                                  onChange={(e) => handleExamScoreChange(exam.id, student.id, e.target.value === "" ? 0 : parseInt(e.target.value))}
+                                  className="w-20 px-2 py-1 border rounded dark:bg-zinc-800 dark:border-zinc-700"
+                                />
+                              </td>
+                              <td className="px-4 py-3 font-bold text-zinc-700 dark:text-zinc-300">{percentage}%</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Student Exam Chart Modal/Overlay */}
+            {selectedStudentForStats && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudentForStats(null)}>
+                <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                      {students.find(s => s.id === selectedStudentForStats)?.name}
+                    </h3>
+                    <button onClick={() => setSelectedStudentForStats(null)} className="p-2 hover:bg-zinc-100 rounded-full dark:hover:bg-zinc-800"><X size={24} /></button>
+                  </div>
+                  <StudentExamChart 
+                    data={getStudentExamData(selectedStudentForStats)} 
+                    studentName={students.find(s => s.id === selectedStudentForStats)?.name || ""} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

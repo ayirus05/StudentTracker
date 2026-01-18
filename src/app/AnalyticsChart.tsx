@@ -68,3 +68,27 @@ export function ClassRankingChart({ data }: { data: any[] }) {
     </div>
   );
 }
+
+export function StudentExamChart({ data, studentName }: { data: any[], studentName: string }) {
+  return (
+    <div className="h-[350px] w-full bg-white p-6 rounded-xl border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+      <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Exam Progress: {studentName}</h3>
+      <ResponsiveContainer width="100%" height="85%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
+          <XAxis 
+            dataKey="exam" 
+            fontSize={12} 
+            tickLine={false} 
+            axisLine={false} 
+            stroke="#71717a"
+            dy={10}
+          />
+          <YAxis domain={[0, 100]} fontSize={12} tickLine={false} axisLine={false} stroke="#71717a" tickFormatter={(value) => `${value}%`} />
+          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: any) => [`${value}%`, 'Score']} />
+          <Line type="monotone" dataKey="percentage" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
