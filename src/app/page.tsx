@@ -12,7 +12,8 @@ import {
   ChevronUp,
   Plus,
   FileText,
-  Star
+  Star,
+  Settings
 } from "lucide-react";
 import { 
   initialClasses,
@@ -38,6 +39,8 @@ export default function Dashboard() {
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments); 
   const [exams, setExams] = useState<Exam[]>(initialExams);
+  const [favoriteClassIds, setFavoriteClassIds] = useState<string[]>(initialClasses.map(c => c.id));
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Selection State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -336,12 +339,30 @@ export default function Dashboard() {
           >
             <LayoutDashboard size={20} /> Dashboard
           </button>
-          <button 
-            onClick={() => setActiveTab("classes")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
-          >
-            <Users size={20} /> Classes
-          </button>
+          <div className="group relative">
+            <button 
+              onClick={() => { setActiveTab("classes"); setSelectedClassId(null); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+            >
+              <Users size={20} /> 
+              <span className="flex-1 text-left">Classes</span>
+            </button>
+            <div className="hidden group-hover:block w-full mt-1 space-y-1">
+              {classes.filter(cls => favoriteClassIds.includes(cls.id)).map(cls => (
+                <button
+                  key={cls.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTab("classes");
+                    setSelectedClassId(cls.id);
+                  }}
+                  className="w-full text-left px-4 py-2 pl-12 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {cls.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <button 
             onClick={() => setActiveTab("assignments")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'assignments' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
@@ -361,7 +382,13 @@ export default function Dashboard() {
             <FileText size={20} /> Exams
           </button>
         </nav>
-        <div className="p-4 border-t border-zinc-800">
+        <div className="p-4 border-t border-zinc-800 space-y-4">
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <Settings size={16} /> Customize Sidebar
+          </button>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm">K</div>
             <div>
@@ -832,6 +859,62 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Sidebar Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Sidebar Settings</h3>
+              <button onClick={() => setIsSettingsOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Navigation</h4>
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 opacity-50 cursor-not-allowed">
+                    <LayoutDashboard size={18} className="text-zinc-500" />
+                    <span className="flex-1 font-medium text-zinc-500">Dashboard</span>
+                    <Check size={16} className="text-indigo-500" />
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 opacity-50 cursor-not-allowed">
+                    <ClipboardList size={18} className="text-zinc-500" />
+                    <span className="flex-1 font-medium text-zinc-500">Assignments</span>
+                    <Check size={16} className="text-indigo-500" />
+                </div>
+              </div>
+
+              <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Classes</h4>
+              <div className="space-y-2">
+                {classes.map(cls => (
+                  <label key={cls.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors">
+                    <input 
+                      type="checkbox"
+                      checked={favoriteClassIds.includes(cls.id)}
+                      onChange={() => {
+                        setFavoriteClassIds(prev => 
+                          prev.includes(cls.id) ? prev.filter(id => id !== cls.id) : [...prev, cls.id]
+                        );
+                      }}
+                      className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="flex-1 font-medium text-zinc-700 dark:text-zinc-300">{cls.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end">
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
