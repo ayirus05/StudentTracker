@@ -17,6 +17,8 @@ import {
 import { 
   initialClasses,
   initialStudents,
+  initialAssignments,
+  initialExams,
   Student,
   Class,
   Assignment,
@@ -34,8 +36,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams">("dashboard");
   const [classes, setClasses] = useState<Class[]>(initialClasses);
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [assignments, setAssignments] = useState<Assignment[]>([]); 
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments); 
+  const [exams, setExams] = useState<Exam[]>(initialExams);
   
   // Selection State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export default function Dashboard() {
   // Exam Form State
   const [newExamTitle, setNewExamTitle] = useState("");
   const [newExamMaxScore, setNewExamMaxScore] = useState(100);
+  const [selectedExamClasses, setSelectedExamClasses] = useState<string[]>([]);
 
   // New Class State
   const [newClassName, setNewClassName] = useState("");
@@ -269,11 +272,12 @@ export default function Dashboard() {
   // --- Exam Handlers ---
   const handleAddExam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newExamTitle) return;
+    if (!newExamTitle || selectedExamClasses.length === 0) return;
 
     const newExam: Exam = {
       id: Math.random().toString(36).substr(2, 9),
       title: newExamTitle,
+      classIds: selectedExamClasses,
       maxScore: newExamMaxScore,
       results: []
     };
@@ -281,6 +285,15 @@ export default function Dashboard() {
     setExams([...exams, newExam]);
     setNewExamTitle("");
     setNewExamMaxScore(100);
+    setSelectedExamClasses([]);
+  };
+
+  const toggleExamClass = (classId: string) => {
+    setSelectedExamClasses(prev => 
+      prev.includes(classId) 
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId]
+    );
   };
 
   const handleExamScoreChange = (examId: string, studentId: string, score: number) => {
@@ -369,14 +382,21 @@ export default function Dashboard() {
         {activeTab === "dashboard" && (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-4 dark:bg-zinc-900 dark:border-zinc-800">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/20 dark:text-blue-400">
-                  <Users size={24} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center gap-4 dark:bg-zinc-900 dark:border-zinc-800">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/20 dark:text-blue-400">
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-zinc-700 dark:text-zinc-300">Total Students</p>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{totalStudents}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-zinc-500 font-medium dark:text-zinc-400">Total Students</p>
-                  <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{totalStudents}</p>
+                <div className="space-y-2 pl-2">
+                  {classes.map(cls => (
+                    <div key={cls.id} className="flex justify-between items-center text-sm"><span className="text-zinc-600 dark:text-zinc-400">{cls.name}</span><span className="font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{students.filter(s => s.classId === cls.id).length}</span></div>
+                  ))}
                 </div>
               </div>
               
@@ -395,16 +415,6 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
-
-              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-4 dark:bg-zinc-900 dark:border-zinc-800">
-                <div className="p-3 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-900/20 dark:text-amber-400">
-                  <GraduationCap size={24} />
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-500 font-medium dark:text-zinc-400">Assignments Submitted</p>
-                  <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{totalSubmissions}</p>
-                </div>
-              </div>
             </div>
 
             {/* Charts Section */}
@@ -414,7 +424,7 @@ export default function Dashboard() {
             </div>
 
             {/* Leaderboard Section */}
-            <StudentTable students={leaderboard} assignments={assignments} />
+            <StudentTable students={leaderboard} assignments={assignments} classes={classes} />
           </>
         )}
 
@@ -708,25 +718,46 @@ export default function Dashboard() {
             {/* Create Exam */}
             <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">Add New Exam</h3>
-              <form onSubmit={handleAddExam} className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Exam Title</label>
-                  <input 
-                    type="text" 
-                    value={newExamTitle}
-                    onChange={(e) => setNewExamTitle(e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
-                    placeholder="e.g., Final Semester Exam"
-                  />
+              <form onSubmit={handleAddExam} className="space-y-4">
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Exam Title</label>
+                    <input 
+                      type="text" 
+                      value={newExamTitle}
+                      onChange={(e) => setNewExamTitle(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
+                      placeholder="e.g., Final Semester Exam"
+                    />
+                  </div>
+                  <div className="w-32">
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Max Score</label>
+                    <input 
+                      type="number" 
+                      value={newExamMaxScore}
+                      onChange={(e) => setNewExamMaxScore(parseInt(e.target.value))}
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
+                    />
+                  </div>
                 </div>
-                <div className="w-32">
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Max Score</label>
-                  <input 
-                    type="number" 
-                    value={newExamMaxScore}
-                    onChange={(e) => setNewExamMaxScore(parseInt(e.target.value))}
-                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700"
-                  />
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Assign to Classes</label>
+                  <div className="flex flex-wrap gap-3">
+                    {classes.map(cls => (
+                      <button
+                        key={cls.id}
+                        type="button"
+                        onClick={() => toggleExamClass(cls.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+                          selectedExamClasses.includes(cls.id)
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-zinc-600 border-zinc-300 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                        }`}
+                      >
+                        {cls.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Add Exam</button>
               </form>
@@ -740,6 +771,7 @@ export default function Dashboard() {
                     <div>
                       <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{exam.title}</h4>
                       <p className="text-sm text-zinc-500">Max Score: {exam.maxScore}</p>
+                      <p className="text-xs text-zinc-400 mt-1">Classes: {exam.classIds.map(id => classes.find(c => c.id === id)?.name).join(", ")}</p>
                     </div>
                   </div>
                   <div className="p-4 max-h-96 overflow-y-auto">
@@ -752,7 +784,7 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {students.map(student => {
+                        {students.filter(s => exam.classIds.includes(s.classId)).map(student => {
                           const result = exam.results.find(r => r.studentId === student.id);
                           const score = result?.score || 0;
                           const percentage = Math.round((score / exam.maxScore) * 100);

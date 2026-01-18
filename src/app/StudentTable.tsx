@@ -1,14 +1,50 @@
+"use client";
+import { useState } from "react";
 import { Trophy, AlertCircle, User } from "lucide-react";
-import { Student, Assignment } from "./data";
+import { Student, Assignment, Class } from "./data";
 
-export default function StudentTable({ students, assignments }: { students: Student[]; assignments: Assignment[] }) {
+export default function StudentTable({ students, assignments, classes }: { students: Student[]; assignments: Assignment[]; classes?: Class[] }) {
+  const [selectedClassId, setSelectedClassId] = useState<string | "all">("all");
+
+  const filteredStudents = selectedClassId === "all" 
+    ? students 
+    : students.filter(s => s.classId === selectedClassId);
+
   return (
     <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
-      <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+      <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center flex-wrap gap-4">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Student Leaderboard</h3>
-        <span className="text-xs font-medium px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full dark:bg-indigo-900/30 dark:text-indigo-400">
-          Top Performers
-        </span>
+        {classes ? (
+          <div className="flex gap-2 overflow-x-auto">
+            <button
+              onClick={() => setSelectedClassId("all")}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                selectedClassId === "all"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              All Classes
+            </button>
+            {classes.map((cls) => (
+              <button
+                key={cls.id}
+                onClick={() => setSelectedClassId(cls.id)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  selectedClassId === cls.id
+                    ? "bg-indigo-600 text-white"
+                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                }`}
+              >
+                {cls.name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs font-medium px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full dark:bg-indigo-900/30 dark:text-indigo-400">
+            Top Performers
+          </span>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400">
@@ -23,7 +59,7 @@ export default function StudentTable({ students, assignments }: { students: Stud
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {students.map((student, index) => {
+            {filteredStudents.map((student, index) => {
               const totalClassAssignments = assignments.filter(a => a.classIds.includes(student.classId)).length;
               return (
                 <tr key={student.id} className="hover:bg-zinc-50 transition-colors dark:hover:bg-zinc-800/50">
