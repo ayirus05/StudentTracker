@@ -1,5 +1,4 @@
 "use client";
-import { useState, useMemo } from "react";
 import { 
   LayoutDashboard, 
   Users, 
@@ -15,311 +14,56 @@ import {
   Star
 } from "lucide-react";
 import { 
-  initialClasses,
-  initialStudents,
-  initialAssignments,
-  initialExams,
-  Student,
-  Class,
-  Assignment,
-  Exam
-} from "./data";
-import { 
   AssignmentPerformanceChart, 
   ClassRankingChart,
   StudentExamChart
 } from "./AnalyticsChart";
 import StudentTable from "./StudentTable";
+import { useDashboard } from "./useDashboard";
 
 export default function Dashboard() {
-  // --- State Management ---
-  const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams">("dashboard");
-  const [classes, setClasses] = useState<Class[]>(initialClasses);
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments); 
-  const [exams, setExams] = useState<Exam[]>(initialExams);
-  
-  // Selection State
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [selectedStudentForStats, setSelectedStudentForStats] = useState<string | null>(null);
-
-  // Form State
-  const [newStudentName, setNewStudentName] = useState("");
-  const [newStudentPhoto, setNewStudentPhoto] = useState<File | null>(null);
-  const [newAssignmentTitle, setNewAssignmentTitle] = useState("");
-  const [newAssignmentPoints, setNewAssignmentPoints] = useState(100);
-  const [selectedAssignmentClasses, setSelectedAssignmentClasses] = useState<string[]>([]);
-  const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
-
-  // Exam Form State
-  const [newExamTitle, setNewExamTitle] = useState("");
-  const [newExamMaxScore, setNewExamMaxScore] = useState(100);
-  const [selectedExamClasses, setSelectedExamClasses] = useState<string[]>([]);
-
-  // New Class State
-  const [newClassName, setNewClassName] = useState("");
-
-  // Edit Class State
-  const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [tempClassName, setTempClassName] = useState("");
-
-  // --- Derived Data for Dashboard ---
-  const leaderboard = useMemo(() => {
-    return [...students].sort((a, b) => b.points - a.points);
-  }, [students]);
-
-  const classPerformance = useMemo(() => {
-    return classes.map(cls => {
-      const classStudents = students.filter(s => s.classId === cls.id);
-      const totalPoints = classStudents.reduce((acc, curr) => acc + curr.points, 0);
-      const avgPoints = classStudents.length ? totalPoints / classStudents.length : 0;
-      return { name: cls.name, points: Math.round(avgPoints) };
-    });
-  }, [classes, students]);
-
-  const assignmentStats = useMemo(() => {
-    // Mocking stats based on created assignments for visualization
-    return assignments.map(a => ({
-      name: a.title,
-      average: Math.floor(Math.random() * 30) + 70, // Random mock data for chart
-      submissions: Math.floor(Math.random() * students.length)
-    }));
-  }, [assignments, students]);
-
-  const classAssignmentCounts = useMemo(() => {
-    return classes.map(cls => ({
-      id: cls.id,
-      name: cls.name,
-      count: assignments.filter(a => a.classIds.includes(cls.id)).length
-    }));
-  }, [classes, assignments]);
-
-  const totalStudents = students.length;
-  const totalAssignments = assignments.length;
-  const totalSubmissions = students.reduce((acc, s) => acc + s.assignmentsCompleted, 0);
-
-  // --- Helper: Recalculate Student Stats ---
-  const updateStudentStats = (currentAssignments: Assignment[]) => {
-    setStudents(prevStudents => prevStudents.map(student => {
-      let points = 0;
-      let completed = 0;
-      
-      currentAssignments.forEach(assignment => {
-        const sub = assignment.submissions.find(s => s.studentId === student.id);
-        if (sub && sub.submitted) {
-          completed++;
-          points += sub.grade || 0;
-        }
-      });
-
-      return { ...student, points: points + (student.manualPoints || 0), assignmentsCompleted: completed };
-    }));
-  };
-
-  // --- Handlers ---
-  const handleAddStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName || !selectedClassId) return;
-
-    const photoUrl = newStudentPhoto ? URL.createObjectURL(newStudentPhoto) : undefined;
-
-    const newStudent: Student = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newStudentName,
-      classId: selectedClassId,
-      photoUrl,
-      points: 0,
-      assignmentsCompleted: 0,
-      manualPoints: 0,
-    };
-
-    setStudents([...students, newStudent]);
-    setNewStudentName("");
-    setNewStudentPhoto(null);
-  };
-  const handleAddClass = (e: React.FormEvent) => {
-
-    if (!newClassName) return;
-
-    const newClass: Class = {
-      id: `class-${Date.now()}`,
-      name: newClassName
-    };
-    setClasses([...classes, newClass]);
-    setNewClassName("");
-  };
-
-  const handleAddAssignment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAssignmentTitle || selectedAssignmentClasses.length === 0) return;
-
-    const newAssignment: Assignment = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: newAssignmentTitle,
-      classIds: selectedAssignmentClasses,
-      totalPoints: newAssignmentPoints,
-      submissions: []
-    };
-
-    setAssignments([...assignments, newAssignment]);
-    setNewAssignmentTitle("");
-    setSelectedAssignmentClasses([]);
-  };
-
-  const toggleAssignmentClass = (classId: string) => {
-    setSelectedAssignmentClasses(prev => 
-      prev.includes(classId) 
-        ? prev.filter(id => id !== classId)
-        : [...prev, classId]
-    );
-  };
-
-  const startEditingClass = (cls: Class, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingClassId(cls.id);
-    setTempClassName(cls.name);
-  };
-
-  const saveClassName = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!editingClassId || !tempClassName.trim()) return;
-    
-    setClasses(classes.map(c => 
-      c.id === editingClassId ? { ...c, name: tempClassName } : c
-    ));
-    setEditingClassId(null);
-    setTempClassName("");
-  };
-
-  const cancelEditingClass = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingClassId(null);
-    setTempClassName("");
-  };
-
-  const handleSubmissionChange = (assignmentId: string, studentId: string, field: 'submitted' | 'grade', value: any) => {
-    const updatedAssignments = assignments.map(a => {
-      if (a.id !== assignmentId) return a;
-
-      const existingSubmission = a.submissions.find(s => s.studentId === studentId);
-      let newSubmissions = [...a.submissions];
-
-      if (existingSubmission) {
-        newSubmissions = newSubmissions.map(s => 
-          s.studentId === studentId ? { ...s, [field]: value } : s
-        );
-      } else {
-        newSubmissions.push({
-          studentId,
-          submitted: field === 'submitted' ? value : false,
-          grade: field === 'grade' ? value : 0
-        });
-      }
-
-      return { ...a, submissions: newSubmissions };
-    });
-
-    setAssignments(updatedAssignments);
-    updateStudentStats(updatedAssignments);
-  };
-
-  const handleSelectAllForClass = (assignmentId: string, classId: string, checked: boolean) => {
-    const classStudents = students.filter(s => s.classId === classId);
-    const updatedAssignments = assignments.map(a => {
-      if (a.id !== assignmentId) return a;
-
-      let newSubmissions = [...a.submissions];
-      
-      classStudents.forEach(student => {
-        const existingIdx = newSubmissions.findIndex(s => s.studentId === student.id);
-        if (existingIdx >= 0) {
-          newSubmissions[existingIdx] = { 
-            ...newSubmissions[existingIdx], 
-            submitted: checked 
-          };
-        } else {
-          newSubmissions.push({
-            studentId: student.id,
-            submitted: checked,
-            grade: 0
-          });
-        }
-      });
-
-      return { ...a, submissions: newSubmissions };
-    });
-
-    setAssignments(updatedAssignments);
-    updateStudentStats(updatedAssignments);
-  };
-
-  const toggleAssignmentExpand = (id: string) => {
-    setExpandedAssignmentId(expandedAssignmentId === id ? null : id);
-  };
-
-  // --- Class Points Handlers ---
-  const handleManualPointsChange = (studentId: string, delta: number) => {
-    setStudents(prev => prev.map(s => {
-      if (s.id !== studentId) return s;
-      const newManualPoints = (s.manualPoints || 0) + delta;
-      // Recalculate total points: (Current Total - Old Manual) + New Manual
-      // Note: s.points currently includes s.manualPoints.
-      const newTotalPoints = (s.points - (s.manualPoints || 0)) + newManualPoints;
-      return { ...s, manualPoints: newManualPoints, points: newTotalPoints };
-    }));
-  };
-
-  // --- Exam Handlers ---
-  const handleAddExam = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newExamTitle || selectedExamClasses.length === 0) return;
-
-    const newExam: Exam = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: newExamTitle,
-      classIds: selectedExamClasses,
-      maxScore: newExamMaxScore,
-      results: []
-    };
-
-    setExams([...exams, newExam]);
-    setNewExamTitle("");
-    setNewExamMaxScore(100);
-    setSelectedExamClasses([]);
-  };
-
-  const toggleExamClass = (classId: string) => {
-    setSelectedExamClasses(prev => 
-      prev.includes(classId) 
-        ? prev.filter(id => id !== classId)
-        : [...prev, classId]
-    );
-  };
-
-  const handleExamScoreChange = (examId: string, studentId: string, score: number) => {
-    setExams(prev => prev.map(exam => {
-      if (exam.id !== examId) return exam;
-      
-      const existingResultIndex = exam.results.findIndex(r => r.studentId === studentId);
-      let newResults = [...exam.results];
-
-      if (existingResultIndex >= 0) {
-        newResults[existingResultIndex] = { ...newResults[existingResultIndex], score };
-      } else {
-        newResults.push({ studentId, score });
-      }
-
-      return { ...exam, results: newResults };
-    }));
-  };
-
-  const getStudentExamData = (studentId: string) => {
-    return exams.map(exam => {
-      const result = exam.results.find(r => r.studentId === studentId);
-      const percentage = result ? Math.round((result.score / exam.maxScore) * 100) : 0;
-      return { exam: exam.title, percentage };
-    });
-  };
+  const {
+    activeTab, setActiveTab,
+    classes,
+    students,
+    assignments,
+    exams,
+    selectedClassId, setSelectedClassId,
+    selectedStudentForStats, setSelectedStudentForStats,
+    newStudentName, setNewStudentName,
+    newStudentPhoto, setNewStudentPhoto,
+    newAssignmentTitle, setNewAssignmentTitle,
+    selectedAssignmentClasses,
+    expandedAssignmentId,
+    newExamTitle, setNewExamTitle,
+    newExamMaxScore, setNewExamMaxScore,
+    selectedExamClasses,
+    newClassName, setNewClassName,
+    editingClassId,
+    tempClassName, setTempClassName,
+    leaderboard,
+    classPerformance,
+    assignmentStats,
+    classAssignmentCounts,
+    totalStudents,
+    handleAddStudent,
+    handleAddClass,
+    handleAddAssignment,
+    toggleAssignmentClass,
+    startEditingClass,
+    saveClassName,
+    cancelEditingClass,
+    handleSubmissionChange,
+    handleSelectAllForClass,
+    toggleAssignmentExpand,
+    handleManualPointsChange,
+    handleAddExam,
+    toggleExamClass,
+    handleExamScoreChange,
+    getStudentExamData,
+    handleDeleteStudent,
+    handleUpdateStudentName
+  } = useDashboard();
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black flex font-sans">
@@ -525,7 +269,12 @@ export default function Dashboard() {
                   </form>
                 </div>
 
-                <StudentTable students={students.filter(s => s.classId === selectedClassId)} assignments={assignments} />
+                <StudentTable 
+                  students={students.filter(s => s.classId === selectedClassId)} 
+                  assignments={assignments} 
+                  onDelete={handleDeleteStudent}
+                  onEdit={handleUpdateStudentName}
+                />
               </div>
             )}
           </div>
