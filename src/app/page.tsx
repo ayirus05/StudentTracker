@@ -13,8 +13,10 @@ import {
   Plus,
   FileText,
   Star,
-  Menu
+  Menu,
+  LogOut
 } from "lucide-react";
+import Auth from "./Auth";
 import { 
   AssignmentPerformanceChart, 
   ClassRankingChart,
@@ -26,6 +28,9 @@ import { useDashboard } from "./useDashboard";
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
+    session,
+    authLoading,
+    handleLogout,
     activeTab, setActiveTab,
     classes,
     students,
@@ -67,6 +72,14 @@ export default function Dashboard() {
     handleDeleteStudent,
     handleUpdateStudentName
   } = useDashboard();
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>;
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black flex font-sans">
@@ -128,12 +141,15 @@ export default function Dashboard() {
           </button>
         </nav>
         <div className="p-4 border-t border-zinc-800">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm">K</div>
-            <div>
-              <p className="text-sm font-medium">Mdm Karuna</p>
-              <p className="text-xs text-zinc-400">Admin</p>
+              <div className="truncate">
+                <p className="text-sm font-medium truncate">{session.user.email}</p>
+                <p className="text-xs text-zinc-400">Teacher</p>
+              </div>
             </div>
+            <button onClick={handleLogout} className="text-zinc-400 hover:text-white transition-colors" title="Sign Out"><LogOut size={18} /></button>
           </div>
         </div>
       </aside>

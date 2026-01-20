@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, FormEvent, MouseEvent } from "react";
+import { Session } from "@supabase/supabase-js";
 import { 
   initialClasses,
   initialStudents,
@@ -13,6 +14,8 @@ import { supabase } from "./supabaseClient";
 
 export const useDashboard = () => {
   // --- State Management ---
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams">("dashboard");
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -43,8 +46,26 @@ export const useDashboard = () => {
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [tempClassName, setTempClassName] = useState("");
 
+  // --- Auth & Session Management ---
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // --- Fetch Data from Supabase ---
   useEffect(() => {
+    if (!session) return;
     const fetchData = async () => {
       const [
         { data: classesData },
@@ -123,7 +144,7 @@ export const useDashboard = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [session]);
 
   // --- Derived Data for Dashboard ---
   const leaderboard = useMemo(() => {
@@ -471,8 +492,19 @@ export const useDashboard = () => {
     });
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setClasses([]);
+    setStudents([]);
+    setAssignments([]);
+    setExams([]);
+  };
+
   return {
+    session,
+    authLoading,
     activeTab, setActiveTab,
+    handleLogout,
     classes,
     students,
     assignments,
