@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Trophy, AlertCircle, User, Pencil, Trash2, Check, X } from "lucide-react";
-import { Student, Assignment, Class } from "./data";
+import { Student, Assignment, Class } from "./useDashboard";
 
 export default function StudentTable({ 
   students, 

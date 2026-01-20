@@ -5,12 +5,50 @@ import {
   initialStudents,
   initialAssignments,
   initialExams,
-  Student,
-  Class,
-  Assignment,
-  Exam
 } from "./data";
 import { supabase } from "./supabaseClient";
+
+export interface Class {
+  id: string;
+  name: string;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  classId: string;
+  photoUrl?: string;
+  manualPoints: number;
+  points: number;
+  assignmentsCompleted: number;
+}
+
+export interface Submission {
+  studentId: string;
+  submitted: boolean;
+  grade?: number;
+}
+
+export interface Assignment {
+  id: string;
+  title: string;
+  totalPoints: number;
+  classIds: string[];
+  submissions: Submission[];
+}
+
+export interface ExamResult {
+  studentId: string;
+  score: number;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  maxScore: number;
+  classIds: string[];
+  results: ExamResult[];
+}
 
 export const useDashboard = () => {
   // --- State Management ---
