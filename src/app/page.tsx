@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,7 +12,8 @@ import {
   ChevronUp,
   Plus,
   FileText,
-  Star
+  Star,
+  Menu
 } from "lucide-react";
 import { 
   AssignmentPerformanceChart, 
@@ -22,6 +24,7 @@ import StudentTable from "./StudentTable";
 import { useDashboard } from "./useDashboard";
 
 export default function Dashboard() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
     activeTab, setActiveTab,
     classes,
@@ -67,39 +70,58 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black flex font-sans">
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 z-40">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-zinc-400 hover:text-white">
+            <Menu size={24} />
+          </button>
+          <h1 className="text-xl font-bold tracking-tight text-indigo-400">EduTrack</h1>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">K</div>
+      </div>
+
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col fixed h-full border-r border-zinc-800">
+      <aside className={`w-64 bg-zinc-900 text-white flex flex-col fixed h-full border-r border-zinc-800 z-50 transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <h1 className="text-2xl font-bold tracking-tight text-indigo-400">EduTrack</h1>
           <p className="text-zinc-400 text-xs mt-1">Teacher Dashboard</p>
         </div>
         <nav className="flex-1 px-4 space-y-2">
           <button 
-            onClick={() => setActiveTab("dashboard")}
+            onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <LayoutDashboard size={20} /> Dashboard
           </button>
           <button 
-            onClick={() => setActiveTab("classes")}
+            onClick={() => { setActiveTab("classes"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <Users size={20} /> Classes
           </button>
           <button 
-            onClick={() => setActiveTab("assignments")}
+            onClick={() => { setActiveTab("assignments"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'assignments' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <ClipboardList size={20} /> Assignments
           </button>
           <button 
-            onClick={() => setActiveTab("classPoints")}
+            onClick={() => { setActiveTab("classPoints"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'classPoints' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <Star size={20} /> ClassPoints
           </button>
           <button 
-            onClick={() => setActiveTab("exams")}
+            onClick={() => { setActiveTab("exams"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'exams' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <FileText size={20} /> Exams
@@ -117,7 +139,7 @@ export default function Dashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-8">
+      <main className="flex-1 md:ml-64 p-8 pt-24 md:pt-8">
         <header className="mb-8">
           <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 capitalize">{activeTab}</h2>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">Manage your {activeTab} and track progress.</p>
