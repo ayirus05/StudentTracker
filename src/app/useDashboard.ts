@@ -122,7 +122,11 @@ export const useDashboard = () => {
         setClasses(classesData);
       } else {
         // Optional: Seed initial classes if DB is empty
-        const { data: inserted } = await supabase.from('classes').insert(initialClasses.map(c => ({ id: c.id, name: c.name }))).select();
+        const { data: inserted } = await supabase.from('classes').insert(initialClasses.map(c => ({ 
+          id: c.id, 
+          name: c.name,
+          user_id: session.user.id 
+        }))).select();
         if (inserted) setClasses(inserted);
       }
 
@@ -263,7 +267,8 @@ export const useDashboard = () => {
       name: newStudent.name,
       class_id: newStudent.classId,
       photo_url: newStudent.photoUrl, // Note: Blob URLs won't persist across sessions. Use Supabase Storage for real photos.
-      manual_points: 0
+      manual_points: 0,
+      user_id: session?.user.id
     }]);
 
     setNewStudentName("");
@@ -280,7 +285,11 @@ export const useDashboard = () => {
     };
     setClasses([...classes, newClass]);
     
-    await supabase.from('classes').insert([{ id: newClass.id, name: newClass.name }]);
+    await supabase.from('classes').insert([{ 
+      id: newClass.id, 
+      name: newClass.name,
+      user_id: session?.user.id
+    }]);
     setNewClassName("");
   };
 
@@ -302,7 +311,8 @@ export const useDashboard = () => {
       id: newAssignment.id,
       title: newAssignment.title,
       class_ids: newAssignment.classIds,
-      total_points: newAssignment.totalPoints
+      total_points: newAssignment.totalPoints,
+      user_id: session?.user.id
     }]);
 
     setNewAssignmentTitle("");
@@ -376,7 +386,8 @@ export const useDashboard = () => {
       assignment_id: assignmentId,
       student_id: studentId,
       submitted: field === 'submitted' ? value : (existingSub?.submitted ?? false),
-      grade: field === 'grade' ? value : (existingSub?.grade ?? 0)
+      grade: field === 'grade' ? value : (existingSub?.grade ?? 0),
+      user_id: session?.user.id
     }, { onConflict: 'assignment_id,student_id' });
   };
 
@@ -397,7 +408,8 @@ export const useDashboard = () => {
           assignment_id: assignmentId,
           student_id: student.id,
           submitted: checked,
-          grade: grade
+          grade: grade,
+          user_id: session?.user.id
         });
 
         if (existingIdx >= 0) {
@@ -483,7 +495,8 @@ export const useDashboard = () => {
       id: newExam.id,
       title: newExam.title,
       class_ids: newExam.classIds,
-      max_score: newExam.maxScore
+      max_score: newExam.maxScore,
+      user_id: session?.user.id
     }]);
 
     setNewExamTitle("");
@@ -518,7 +531,8 @@ export const useDashboard = () => {
     await supabase.from('exam_results').upsert({
       exam_id: examId,
       student_id: studentId,
-      score: score
+      score: score,
+      user_id: session?.user.id
     }, { onConflict: 'exam_id,student_id' });
   };
 
