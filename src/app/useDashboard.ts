@@ -106,16 +106,27 @@ export const useDashboard = () => {
     if (!session) return;
     const fetchData = async () => {
       const [
-        { data: classesData },
-        { data: studentsData },
-        { data: assignmentsData },
-        { data: examsData }
+        { data: classesData, error: classesError },
+        { data: studentsData, error: studentsError },
+        { data: assignmentsData, error: assignmentsError },
+        { data: submissionsData, error: submissionsError },
+        { data: examsData, error: examsError },
+        { data: examResultsData, error: examResultsError }
       ] = await Promise.all([
-        supabase.from('classes').select('*'),
-        supabase.from('students').select('*'),
-        supabase.from('assignments').select('*, submissions(*)'),
-        supabase.from('exams').select('*, exam_results(*)')
+        supabase.from('classes').select('*').eq('user_id', session.user.id),
+        supabase.from('students').select('*').eq('user_id', session.user.id),
+        supabase.from('assignments').select('*').eq('user_id', session.user.id),
+        supabase.from('submissions').select('*').eq('user_id', session.user.id),
+        supabase.from('exams').select('*').eq('user_id', session.user.id),
+        supabase.from('exam_results').select('*').eq('user_id', session.user.id)
       ]);
+
+      if (classesError) console.error("Error fetching classes:", classesError);
+      if (studentsError) console.error("Error fetching students:", studentsError);
+      if (assignmentsError) console.error("Error fetching assignments:", assignmentsError);
+      if (submissionsError) console.error("Error fetching submissions:", submissionsError);
+      if (examsError) console.error("Error fetching exams:", examsError);
+      if (examResultsError) console.error("Error fetching exam results:", examResultsError);
 
       // Initialize Classes (or seed if empty)
       if (classesData && classesData.length > 0) {
@@ -133,17 +144,23 @@ export const useDashboard = () => {
       // Initialize Assignments
       let loadedAssignments: Assignment[] = [];
       if (assignmentsData) {
-        loadedAssignments = assignmentsData.map((a: any) => ({
-          id: a.id,
-          title: a.title,
-          classIds: a.class_ids || [],
-          totalPoints: a.total_points,
-          submissions: a.submissions.map((sub: any) => ({
+        loadedAssignments = assignmentsData.map((a: any) => {
+          const assignmentSubmissions = submissionsData 
+            ? submissionsData.filter((s: any) => s.assignment_id === a.id)
+            : [];
+            
+          return {
+            id: a.id,
+            title: a.title,
+            classIds: a.class_ids || [],
+            totalPoints: a.total_points,
+            submissions: assignmentSubmissions.map((sub: any) => ({
             studentId: sub.student_id,
             submitted: sub.submitted,
             grade: sub.grade
-          }))
-        }));
+            }))
+          };
+        });
         setAssignments(loadedAssignments);
       }
 
@@ -176,13 +193,19 @@ export const useDashboard = () => {
 
       // Initialize Exams
       if (examsData) {
-        setExams(examsData.map((e: any) => ({
-          id: e.id,
-          title: e.title,
-          classIds: e.class_ids || [],
-          maxScore: e.max_score,
-          results: e.exam_results.map((r: any) => ({ studentId: r.student_id, score: r.score }))
-        })));
+        setExams(examsData.map((e: any) => {
+          const examResults = examResultsData 
+            ? examResultsData.filter((r: any) => r.exam_id === e.id)
+            : [];
+
+          return {
+            id: e.id,
+            title: e.title,
+            classIds: e.class_ids || [],
+            maxScore: e.max_score,
+            results: examResults.map((r: any) => ({ studentId: r.student_id, score: r.score }))
+          };
+        }));
       }
     };
     fetchData();
