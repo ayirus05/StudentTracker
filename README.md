@@ -3,11 +3,11 @@
 # Overview
 StudentTracker is a web app that serves as a centralized platform for teachers to track student results and maintain a student point system. The website is still in development and new features are still being added to make the website more interactive and engaging for young students. 
 Features include:
-• Dashboard with important information such as number of students and pending assignments per class along with infographics and points leaderboards for each class
-• Maintain a list of classes with students classified accordingly for each class
-• Assignments tab to add assignments for classes and to upload grades and completion status for the assignments (Able to add the same assignment for multiple classes)
-• ClassPoints tab to track the points for all students in each class
-• Exams tab to track examination results for students across the different examinations they undergo (Upon clicking student name, you will be able to see their performance over time)
+*   Dashboard with important information such as number of students and pending assignments per class along with infographics and points leaderboards for each class
+*   Maintain a list of classes with students classified accordingly for each class
+*   Assignments tab to add assignments for classes and to upload grades and completion status for the assignments   (Able to add the same assignment for multiple classes)
+*   ClassPoints tab to track the points for all students in each class
+*   Exams tab to track examination results for students across the different examinations they undergo (Upon clicking student name, you will be able to see their performance over time)
 
 ## Background
 I created this project as a favour to a relative working as an educator who wanted a way to track their students' results and establish a point system for their class. Personally, this project allowed me to experiment with using the Next.js framework, working with Supabase databases and learning how to establish an authentication system using Supabase. 
