@@ -485,18 +485,23 @@ export const useDashboard = () => {
 
   // --- Class Points Handlers ---
   const handleManualPointsChange = async (studentId: string, delta: number) => {
-    let newPointsVal = 0;
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+
+    const newManualPoints = (student.manualPoints || 0) + delta;
+
     setStudents(prev => prev.map(s => {
       if (s.id !== studentId) return s;
-      const newManualPoints = (s.manualPoints || 0) + delta;
-      newPointsVal = newManualPoints;
       // Recalculate total points: (Current Total - Old Manual) + New Manual
       // Note: s.points currently includes s.manualPoints.
       const newTotalPoints = (s.points - (s.manualPoints || 0)) + newManualPoints;
       return { ...s, manualPoints: newManualPoints, points: newTotalPoints };
     }));
     
-    await supabase.from('students').update({ manual_points: newPointsVal }).eq('id', studentId);
+    const { error } = await supabase.from('students').update({ manual_points: newManualPoints }).eq('id', studentId);
+    if (error) {
+      console.error("Error updating manual points:", error);
+    }
   };
 
   // --- Exam Handlers ---
