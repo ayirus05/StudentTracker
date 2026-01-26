@@ -523,10 +523,10 @@ export default function Dashboard() {
                   </h3>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-zinc-500 font-medium hidden sm:inline">Class Actions:</span>
-                    <button onClick={() => handleClassPointsChange(selectedClassId, -10)} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-10</button>
                     <button onClick={() => handleClassPointsChange(selectedClassId, -5)} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-5</button>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, -1)} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-1</button>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, 1)} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+1</button>
                     <button onClick={() => handleClassPointsChange(selectedClassId, 5)} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+5</button>
-                    <button onClick={() => handleClassPointsChange(selectedClassId, 10)} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+10</button>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
@@ -542,11 +542,11 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                        <button onClick={() => handleManualPointsChange(student.id, -10)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold text-xs transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-10</button>
+                        <button onClick={() => handleManualPointsChange(student.id, -5)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold text-xs transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-5</button>
                         <button onClick={() => handleManualPointsChange(student.id, -1)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold text-xs transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-1</button>
                         <span className="flex-1 text-center font-bold text-zinc-700 dark:text-zinc-300">{student.manualPoints || 0}</span>
                         <button onClick={() => handleManualPointsChange(student.id, 1)} className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold text-xs transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+1</button>
-                        <button onClick={() => handleManualPointsChange(student.id, 10)} className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold text-xs transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+10</button>
+                        <button onClick={() => handleManualPointsChange(student.id, 5)} className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold text-xs transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+5</button>
                       </div>
                     </div>
                   ))}

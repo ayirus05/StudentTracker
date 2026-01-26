@@ -167,7 +167,7 @@ export default function Randomizer({ classes, students }: RandomizerProps) {
                   <div className="mb-6 text-center animate-bounce">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full font-bold text-lg border border-yellow-200 shadow-sm">
                       <Trophy size={20} />
-                      Winner: {winner.name}
+                      {winner.name}
                       <Sparkles size={20} />
                     </div>
                   </div>
