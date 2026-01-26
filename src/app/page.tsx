@@ -14,7 +14,8 @@ import {
   FileText,
   Star,
   Menu,
-  LogOut
+  LogOut,
+  Dices
 } from "lucide-react";
 import Auth from "./Auth";
 import { 
@@ -23,6 +24,7 @@ import {
   StudentExamChart
 } from "./AnalyticsChart";
 import StudentTable from "./StudentTable";
+import Randomizer from "./Randomizer";
 import { useDashboard } from "./useDashboard";
 
 export default function Dashboard() {
@@ -39,6 +41,7 @@ export default function Dashboard() {
     selectedClassId, setSelectedClassId,
     selectedStudentForStats, setSelectedStudentForStats,
     newStudentName, setNewStudentName,
+    newStudentFormClass, setNewStudentFormClass,
     newStudentPhoto, setNewStudentPhoto,
     newAssignmentTitle, setNewAssignmentTitle,
     selectedAssignmentClasses,
@@ -65,12 +68,13 @@ export default function Dashboard() {
     handleSelectAllForClass,
     toggleAssignmentExpand,
     handleManualPointsChange,
+    handleClassPointsChange,
     handleAddExam,
     toggleExamClass,
     handleExamScoreChange,
     getStudentExamData,
     handleDeleteStudent,
-    handleUpdateStudentName
+    handleUpdateStudent
   } = useDashboard();
 
   if (authLoading) {
@@ -139,6 +143,12 @@ export default function Dashboard() {
           >
             <FileText size={20} /> Exams
           </button>
+          <button 
+            onClick={() => { setActiveTab("randomizer"); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'randomizer' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+          >
+            <Dices size={20} /> Randomizer
+          </button>
         </nav>
         <div className="p-4 border-t border-zinc-800">
           <div className="flex items-center justify-between gap-3">
@@ -177,7 +187,14 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2 pl-2">
                   {classes.map(cls => (
-                    <div key={cls.id} className="flex justify-between items-center text-sm"><span className="text-zinc-600 dark:text-zinc-400">{cls.name}</span><span className="font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{students.filter(s => s.classId === cls.id).length}</span></div>
+                    <button 
+                      key={cls.id} 
+                      onClick={() => { setSelectedClassId(cls.id); setActiveTab("classes"); }}
+                      className="w-full flex justify-between items-center text-sm p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-lg transition-colors text-left"
+                    >
+                      <span className="text-zinc-600 dark:text-zinc-400">{cls.name}</span>
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{students.filter(s => s.classId === cls.id).length}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -193,7 +210,14 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2 pl-2">
                   {classAssignmentCounts.map(item => (
-                    <div key={item.id} className="flex justify-between items-center text-sm"><span className="text-zinc-600 dark:text-zinc-400">{item.name}</span><span className="font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{item.count}</span></div>
+                    <button 
+                      key={item.id} 
+                      onClick={() => { setSelectedClassId(item.id); setActiveTab("assignments"); }}
+                      className="w-full flex justify-between items-center text-sm p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-lg transition-colors text-left"
+                    >
+                      <span className="text-zinc-600 dark:text-zinc-400">{item.name}</span>
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{item.count}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -292,6 +316,16 @@ export default function Dashboard() {
                         placeholder="Enter full name"
                       />
                     </div>
+                    <div className="w-full md:w-48">
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Form Class</label>
+                      <input 
+                        type="text" 
+                        value={newStudentFormClass}
+                        onChange={(e) => setNewStudentFormClass(e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-700"
+                        placeholder="e.g. 9A"
+                      />
+                    </div>
                     <div className="flex-1 w-full">
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Photo (Optional)</label>
                       <input 
@@ -310,8 +344,10 @@ export default function Dashboard() {
                 <StudentTable 
                   students={students.filter(s => s.classId === selectedClassId)} 
                   assignments={assignments} 
+                  classes={classes}
+                  disableClassFilter={true}
                   onDelete={handleDeleteStudent}
-                  onEdit={handleUpdateStudentName}
+                  onEdit={handleUpdateStudent}
                 />
               </div>
             )}
@@ -359,7 +395,20 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-4">
-              {assignments.map(assignment => (
+              {selectedClassId && (
+                <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                  <span className="text-sm text-indigo-900 dark:text-indigo-200">
+                    Filtering by: <span className="font-bold">{classes.find(c => c.id === selectedClassId)?.name}</span>
+                  </span>
+                  <button 
+                    onClick={() => setSelectedClassId(null)}
+                    className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
+              {assignments.filter(a => !selectedClassId || a.classIds.includes(selectedClassId)).map(assignment => (
                 <div key={assignment.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
                   <div 
                     className="p-4 flex justify-between items-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
@@ -438,8 +487,8 @@ export default function Dashboard() {
                   )}
                 </div>
               ))}
-              {assignments.length === 0 && (
-                <p className="text-center text-zinc-500 py-8">No assignments created yet.</p>
+              {assignments.filter(a => !selectedClassId || a.classIds.includes(selectedClassId)).length === 0 && (
+                <p className="text-center text-zinc-500 py-8">{selectedClassId ? "No assignments found for this class." : "No assignments created yet."}</p>
               )}
             </div>
           </div>
@@ -468,29 +517,36 @@ export default function Dashboard() {
 
             {selectedClassId && (
               <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
-                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                     Manage Points: {classes.find(c => c.id === selectedClassId)?.name}
                   </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-zinc-500 font-medium hidden sm:inline">Class Actions:</span>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, -10)} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-10</button>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, -5)} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-5</button>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, 5)} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+5</button>
+                    <button onClick={() => handleClassPointsChange(selectedClassId, 10)} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+10</button>
+                  </div>
                 </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                   {students.filter(s => s.classId === selectedClassId).map(student => (
-                    <div key={student.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-zinc-200 overflow-hidden flex items-center justify-center">
-                          {student.photoUrl ? <img src={student.photoUrl} className="h-full w-full object-cover" /> : <span className="text-xs font-bold">{student.name.charAt(0)}</span>}
+                    <div key={student.id} className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-col gap-4 transition-all hover:shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-zinc-200 overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-white dark:border-zinc-600 shadow-sm">
+                          {student.photoUrl ? <img src={student.photoUrl} className="h-full w-full object-cover" /> : <span className="text-sm font-bold">{student.name.charAt(0)}</span>}
                         </div>
                         <div>
-                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{student.name}</p>
-                          <p className="text-xs text-zinc-500">Current Manual Points: <span className="font-bold text-indigo-600">{student.manualPoints || 0}</span></p>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{student.name}</p>
+                          <p className="text-xs text-zinc-500">Points: <span className="font-bold text-indigo-600">{student.manualPoints || 0}</span></p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => handleManualPointsChange(student.id, -10)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold">-10</button>
-                        <button onClick={() => handleManualPointsChange(student.id, -1)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold">-1</button>
-                        <span className="w-12 text-center font-bold text-zinc-700 dark:text-zinc-300">{student.manualPoints || 0}</span>
-                        <button onClick={() => handleManualPointsChange(student.id, 1)} className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold">+1</button>
-                        <button onClick={() => handleManualPointsChange(student.id, 10)} className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold">+10</button>
+                      <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <button onClick={() => handleManualPointsChange(student.id, -10)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold text-xs transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-10</button>
+                        <button onClick={() => handleManualPointsChange(student.id, -1)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 font-bold text-xs transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">-1</button>
+                        <span className="flex-1 text-center font-bold text-zinc-700 dark:text-zinc-300">{student.manualPoints || 0}</span>
+                        <button onClick={() => handleManualPointsChange(student.id, 1)} className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold text-xs transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+1</button>
+                        <button onClick={() => handleManualPointsChange(student.id, 10)} className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 font-bold text-xs transition-colors dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40">+10</button>
                       </div>
                     </div>
                   ))}
@@ -617,6 +673,10 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "randomizer" && (
+          <Randomizer classes={classes} students={students} />
         )}
       </main>
     </div>

@@ -17,6 +17,7 @@ export interface Student {
   id: string;
   name: string;
   classId: string;
+  formClass: string;
   photoUrl?: string;
   manualPoints: number;
   points: number;
@@ -54,7 +55,7 @@ export const useDashboard = () => {
   // --- State Management ---
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "classes" | "assignments" | "classPoints" | "exams" | "randomizer">("dashboard");
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]); 
@@ -66,6 +67,7 @@ export const useDashboard = () => {
 
   // Form State
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentFormClass, setNewStudentFormClass] = useState("");
   const [newStudentPhoto, setNewStudentPhoto] = useState<File | null>(null);
   const [newAssignmentTitle, setNewAssignmentTitle] = useState("");
   const [newAssignmentPoints, setNewAssignmentPoints] = useState(100);
@@ -182,6 +184,7 @@ export const useDashboard = () => {
             id: s.id,
             name: s.name,
             classId: s.class_id,
+            formClass: s.form_class || "",
             photoUrl: s.photo_url,
             manualPoints: s.manual_points || 0,
             points: points + (s.manual_points || 0),
@@ -275,6 +278,7 @@ export const useDashboard = () => {
       id: Math.random().toString(36).substr(2, 9),
       name: newStudentName,
       classId: selectedClassId,
+      formClass: newStudentFormClass,
       photoUrl,
       points: 0,
       assignmentsCompleted: 0,
@@ -289,12 +293,14 @@ export const useDashboard = () => {
       id: newStudent.id,
       name: newStudent.name,
       class_id: newStudent.classId,
+      form_class: newStudent.formClass,
       photo_url: newStudent.photoUrl, // Note: Blob URLs won't persist across sessions. Use Supabase Storage for real photos.
       manual_points: 0,
       user_id: session?.user.id
     }]);
 
     setNewStudentName("");
+    setNewStudentFormClass("");
     setNewStudentPhoto(null);
   };
 
@@ -474,9 +480,13 @@ export const useDashboard = () => {
     await supabase.from('students').delete().eq('id', studentId);
   };
 
-  const handleUpdateStudentName = async (studentId: string, newName: string) => {
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, name: newName } : s));
-    await supabase.from('students').update({ name: newName }).eq('id', studentId);
+  const handleUpdateStudent = async (studentId: string, updates: { name?: string, formClass?: string }) => {
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updates } : s));
+    
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.formClass !== undefined) dbUpdates.form_class = updates.formClass;
+    await supabase.from('students').update(dbUpdates).eq('id', studentId);
   };
 
   const toggleAssignmentExpand = (id: string) => {
@@ -501,6 +511,36 @@ export const useDashboard = () => {
     const { error } = await supabase.from('students').update({ manual_points: newManualPoints }).eq('id', studentId);
     if (error) {
       console.error("Error updating manual points:", error);
+    }
+  };
+
+  const handleClassPointsChange = async (classId: string, delta: number) => {
+    const classStudents = students.filter(s => s.classId === classId);
+    if (classStudents.length === 0) return;
+
+    const dbUpdates = classStudents.map(s => {
+      const newManualPoints = (s.manualPoints || 0) + delta;
+      return {
+        id: s.id,
+        name: s.name,
+        class_id: s.classId,
+        form_class: s.formClass,
+        photo_url: s.photoUrl,
+        manual_points: newManualPoints,
+        user_id: session?.user.id
+      };
+    });
+
+    setStudents(prev => prev.map(s => {
+      if (s.classId !== classId) return s;
+      const newManualPoints = (s.manualPoints || 0) + delta;
+      const newTotalPoints = (s.points - (s.manualPoints || 0)) + newManualPoints;
+      return { ...s, manualPoints: newManualPoints, points: newTotalPoints };
+    }));
+
+    const { error } = await supabase.from('students').upsert(dbUpdates);
+    if (error) {
+      console.error("Error updating class points:", error);
     }
   };
 
@@ -592,6 +632,7 @@ export const useDashboard = () => {
     selectedClassId, setSelectedClassId,
     selectedStudentForStats, setSelectedStudentForStats,
     newStudentName, setNewStudentName,
+    newStudentFormClass, setNewStudentFormClass,
     newStudentPhoto, setNewStudentPhoto,
     newAssignmentTitle, setNewAssignmentTitle,
     newAssignmentPoints, setNewAssignmentPoints,
@@ -621,11 +662,12 @@ export const useDashboard = () => {
     handleSelectAllForClass,
     toggleAssignmentExpand,
     handleManualPointsChange,
+    handleClassPointsChange,
     handleAddExam,
     toggleExamClass,
     handleExamScoreChange,
     getStudentExamData,
     handleDeleteStudent,
-    handleUpdateStudentName
+    handleUpdateStudent
   };
 };
