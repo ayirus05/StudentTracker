@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ![EduTrack Logo](EduTrack Logo.png)
+=======
+<img width="230" height="110" alt="EduTrack Logo" src="https://github.com/user-attachments/assets/199eec51-4167-409d-ae25-d9cb265377d8" style="display: block; margin: 0 auto;"/>
+>>>>>>> 75f6494faa85a7cd5ec603116c2ec0215607873d
 
 # Overview
 StudentTracker is a web app that serves as a centralized platform for teachers to track student results and maintain a student point system. The website is still in development and new features are still being added to make the website more interactive and engaging for young students. 
