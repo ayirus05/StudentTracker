@@ -15,7 +15,8 @@ import {
   Star,
   Menu,
   LogOut,
-  Dices
+  Dices,
+  Trash2
 } from "lucide-react";
 import Auth from "./Auth";
 import { 
@@ -29,6 +30,14 @@ import { useDashboard } from "./useDashboard";
 
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [editAssignmentTitle, setEditAssignmentTitle] = useState("");
+  const [editAssignmentPoints, setEditAssignmentPoints] = useState<number>(0);
+
+  // Exam Edit State
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [editExamTitle, setEditExamTitle] = useState("");
+  const [editExamMaxScore, setEditExamMaxScore] = useState<number>(0);
   const {
     session,
     authLoading,
@@ -60,6 +69,8 @@ export default function Dashboard() {
     handleAddStudent,
     handleAddClass,
     handleAddAssignment,
+    handleUpdateAssignment,
+    handleDeleteAssignment,
     toggleAssignmentClass,
     startEditingClass,
     saveClassName,
@@ -70,12 +81,34 @@ export default function Dashboard() {
     handleManualPointsChange,
     handleClassPointsChange,
     handleAddExam,
+    handleUpdateExam,
+    handleDeleteExam,
     toggleExamClass,
     handleExamScoreChange,
     getStudentExamData,
     handleDeleteStudent,
     handleUpdateStudent
   } = useDashboard();
+
+  const handleSaveClass = (e: any) => {
+    saveClassName(e);
+  };
+
+  const onUpdateAssignment = async (id: string) => {
+    if (!editAssignmentTitle.trim()) return;
+    const success = await handleUpdateAssignment(id, { title: editAssignmentTitle, totalPoints: editAssignmentPoints });
+    if (success) {
+      setEditingAssignmentId(null);
+    }
+  };
+
+  const onUpdateExam = async (id: string) => {
+    if (!editExamTitle.trim()) return;
+    const success = await handleUpdateExam(id, { title: editExamTitle, maxScore: editExamMaxScore });
+    if (success) {
+      setEditingExamId(null);
+    }
+  };
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>;
@@ -277,7 +310,7 @@ export default function Dashboard() {
                           className="w-full px-2 py-1 text-lg font-bold border rounded border-zinc-300 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                           autoFocus
                         />
-                        <button onClick={saveClassName} className="p-1 text-green-600 hover:bg-green-50 rounded dark:hover:bg-green-900/30"><Check size={18} /></button>
+                        <button onClick={handleSaveClass} className="p-1 text-green-600 hover:bg-green-50 rounded dark:hover:bg-green-900/30"><Check size={18} /></button>
                         <button onClick={cancelEditingClass} className="p-1 text-red-600 hover:bg-red-50 rounded dark:hover:bg-red-900/30"><X size={18} /></button>
                       </div>
                     ) : (
@@ -410,6 +443,31 @@ export default function Dashboard() {
               )}
               {assignments.filter(a => !selectedClassId || a.classIds.includes(selectedClassId)).map(assignment => (
                 <div key={assignment.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+                  {editingAssignmentId === assignment.id ? (
+                    <div className="p-4 flex items-center gap-4" onClick={e => e.stopPropagation()}>
+                      <input 
+                        type="text" 
+                        value={editAssignmentTitle}
+                        onChange={e => setEditAssignmentTitle(e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="Assignment Title"
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-zinc-500 font-medium">Max Pts:</span>
+                        <input 
+                          type="number" 
+                          value={editAssignmentPoints}
+                          onChange={e => setEditAssignmentPoints(parseInt(e.target.value) || 0)}
+                          className="w-20 px-3 py-2 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => onUpdateAssignment(assignment.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Check size={20} /></button>
+                        <button onClick={() => setEditingAssignmentId(null)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><X size={20} /></button>
+                      </div>
+                    </div>
+                  ) : (
                   <div 
                     className="p-4 flex justify-between items-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
                     onClick={() => toggleAssignmentExpand(assignment.id)}
@@ -423,13 +481,36 @@ export default function Dashboard() {
                         Assigned to: {assignment.classIds.map(id => classes.find(c => c.id === id)?.name).join(", ")}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className="block text-xs font-medium text-zinc-500 uppercase">Total Points</span>
-                      <span className="text-lg font-bold text-indigo-600">{assignment.totalPoints}</span>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <span className="block text-xs font-medium text-zinc-500 uppercase">Total Points</span>
+                        <span className="text-lg font-bold text-indigo-600">{assignment.totalPoints}</span>
+                      </div>
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <button 
+                          onClick={() => {
+                            setEditingAssignmentId(assignment.id);
+                            setEditAssignmentTitle(assignment.title);
+                            setEditAssignmentPoints(assignment.totalPoints);
+                          }}
+                          className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Assignment"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteAssignment(assignment.id)}
+                          className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Assignment"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                  )}
                   
-                  {expandedAssignmentId === assignment.id && (
+                  {expandedAssignmentId === assignment.id && editingAssignmentId !== assignment.id && (
                     <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-4 space-y-6">
                       {assignment.classIds.map(classId => {
                         const classObj = classes.find(c => c.id === classId);
@@ -611,11 +692,47 @@ export default function Dashboard() {
               {exams.map(exam => (
                 <div key={exam.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
                   <div className="p-4 flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
-                    <div>
-                      <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{exam.title}</h4>
-                      <p className="text-sm text-zinc-500">Max Score: {exam.maxScore}</p>
-                      <p className="text-xs text-zinc-400 mt-1">Classes: {exam.classIds.map(id => classes.find(c => c.id === id)?.name).join(", ")}</p>
-                    </div>
+                    {editingExamId === exam.id ? (
+                      <div className="flex items-center gap-4 w-full" onClick={e => e.stopPropagation()}>
+                        <input 
+                          type="text" 
+                          value={editExamTitle}
+                          onChange={e => setEditExamTitle(e.target.value)}
+                          className="flex-1 px-3 py-2 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Exam Title"
+                          autoFocus
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-zinc-500 font-medium">Max:</span>
+                          <input 
+                            type="number" 
+                            value={editExamMaxScore}
+                            onChange={e => setEditExamMaxScore(parseInt(e.target.value) || 0)}
+                            className="w-20 px-3 py-2 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => onUpdateExam(exam.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Check size={20} /></button>
+                          <button onClick={() => setEditingExamId(null)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><X size={20} /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{exam.title}</h4>
+                          <p className="text-sm text-zinc-500">Max Score: {exam.maxScore}</p>
+                          <p className="text-xs text-zinc-400 mt-1">Classes: {exam.classIds.map(id => classes.find(c => c.id === id)?.name).join(", ")}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => { setEditingExamId(exam.id); setEditExamTitle(exam.title); setEditExamMaxScore(exam.maxScore); }} className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Exam">
+                            <Pencil size={18} />
+                          </button>
+                          <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Exam">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="p-4 max-h-96 overflow-y-auto">
                     <table className="w-full text-sm text-left">

@@ -51,6 +51,16 @@ export interface Exam {
   results: ExamResult[];
 }
 
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export const useDashboard = () => {
   // --- State Management ---
   const [session, setSession] = useState<Session | null>(null);
@@ -155,7 +165,7 @@ export const useDashboard = () => {
             id: a.id,
             title: a.title,
             classIds: a.class_ids || [],
-            totalPoints: a.total_points,
+            totalPoints: a.total_points ?? a.totalPoints,
             submissions: assignmentSubmissions.map((sub: any) => ({
             studentId: sub.student_id,
             submitted: sub.submitted,
@@ -275,7 +285,7 @@ export const useDashboard = () => {
     const photoUrl = newStudentPhoto ? URL.createObjectURL(newStudentPhoto) : undefined;
 
     const newStudent: Student = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateUUID(),
       name: newStudentName,
       classId: selectedClassId,
       formClass: newStudentFormClass,
@@ -286,10 +296,10 @@ export const useDashboard = () => {
     };
 
     // Optimistic Update
-    setStudents([...students, newStudent]);
+    setStudents(prev => [...prev, newStudent]);
     
     // DB Update
-    await supabase.from('students').insert([{
+    const { error } = await supabase.from('students').insert([{
       id: newStudent.id,
       name: newStudent.name,
       class_id: newStudent.classId,
@@ -299,9 +309,15 @@ export const useDashboard = () => {
       user_id: session?.user.id
     }]);
 
-    setNewStudentName("");
-    setNewStudentFormClass("");
-    setNewStudentPhoto(null);
+    if (error) {
+      console.error("Error adding student:", error);
+      alert(`Failed to add student: ${error.message}`);
+      setStudents(prev => prev.filter(s => s.id !== newStudent.id));
+    } else {
+      setNewStudentName("");
+      setNewStudentFormClass("");
+      setNewStudentPhoto(null);
+    }
   };
 
   const handleAddClass = async (e: FormEvent) => {
@@ -309,34 +325,41 @@ export const useDashboard = () => {
     if (!newClassName) return;
 
     const newClass: Class = {
-      id: `class-${Date.now()}`,
+      id: generateUUID(),
       name: newClassName
     };
-    setClasses([...classes, newClass]);
+    setClasses(prev => [...prev, newClass]);
     
-    await supabase.from('classes').insert([{ 
+    const { error } = await supabase.from('classes').insert([{ 
       id: newClass.id, 
       name: newClass.name,
       user_id: session?.user.id
     }]);
-    setNewClassName("");
+
+    if (error) {
+      console.error("Error adding class:", error);
+      alert(`Failed to add class: ${error.message}`);
+      setClasses(prev => prev.filter(c => c.id !== newClass.id));
+    } else {
+      setNewClassName("");
+    }
   };
 
-  const handleAddAssignment = async (e: FormEvent) => {
+  const handleAddAssignment = async (e: FormEvent): Promise<boolean> => {
     e.preventDefault();
-    if (!newAssignmentTitle || selectedAssignmentClasses.length === 0) return;
+    if (!newAssignmentTitle || selectedAssignmentClasses.length === 0) return false;
 
     const newAssignment: Assignment = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateUUID(),
       title: newAssignmentTitle,
       classIds: selectedAssignmentClasses,
       totalPoints: newAssignmentPoints,
       submissions: []
     };
 
-    setAssignments([...assignments, newAssignment]);
+    setAssignments(prev => [...prev, newAssignment]);
 
-    await supabase.from('assignments').insert([{
+    const { error } = await supabase.from('assignments').insert([{
       id: newAssignment.id,
       title: newAssignment.title,
       class_ids: newAssignment.classIds,
@@ -344,8 +367,50 @@ export const useDashboard = () => {
       user_id: session?.user.id
     }]);
 
-    setNewAssignmentTitle("");
-    setSelectedAssignmentClasses([]);
+    if (error) {
+      console.error("Error adding assignment:", error);
+      alert(`Failed to add assignment: ${error.message}`);
+      setAssignments(prev => prev.filter(a => a.id !== newAssignment.id));
+      return false;
+    } else {
+      setNewAssignmentTitle("");
+      setSelectedAssignmentClasses([]);
+      return true;
+    }
+  };
+
+  const handleUpdateAssignment = async (id: string, updates: { title?: string, totalPoints?: number }): Promise<boolean> => {
+    const originalAssignment = assignments.find(a => a.id === id);
+    setAssignments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.totalPoints !== undefined) dbUpdates.total_points = updates.totalPoints;
+
+    const { error } = await supabase.from('assignments').update(dbUpdates).eq('id', id);
+    if (error) {
+      console.error("Error updating assignment:", error);
+      alert(`Failed to update assignment: ${error.message}`);
+      if (originalAssignment) {
+        setAssignments(prev => prev.map(a => a.id === id ? originalAssignment : a));
+      }
+      return false;
+    }
+    return true;
+  };
+
+  const handleDeleteAssignment = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return;
+    
+    setAssignments(prev => prev.filter(a => a.id !== id));
+    // Also remove submissions locally if needed, or just let them be orphaned in state until reload
+    
+    const { error } = await supabase.from('assignments').delete().eq('id', id);
+    if (error) {
+      console.error("Error deleting assignment:", error);
+      alert(`Failed to delete assignment: ${error.message}`);
+      // Ideally revert state here on error
+    }
   };
 
   const toggleAssignmentClass = (classId: string) => {
@@ -362,15 +427,20 @@ export const useDashboard = () => {
     setTempClassName(cls.name);
   };
 
-  const saveClassName = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const saveClassName = async (e?: any) => {
+    if (e?.stopPropagation) e.stopPropagation();
     if (!editingClassId || !tempClassName.trim()) return;
     
     setClasses(classes.map(c => 
       c.id === editingClassId ? { ...c, name: tempClassName } : c
     ));
 
-    await supabase.from('classes').update({ name: tempClassName }).eq('id', editingClassId);
+    const { error } = await supabase.from('classes').update({ name: tempClassName }).eq('id', editingClassId);
+    
+    if (error) {
+      console.error("Error updating class:", error);
+      alert(`Failed to update class: ${error.message}`);
+    }
 
     setEditingClassId(null);
     setTempClassName("");
@@ -481,12 +551,21 @@ export const useDashboard = () => {
   };
 
   const handleUpdateStudent = async (studentId: string, updates: { name?: string, formClass?: string }) => {
+    const originalStudent = students.find(s => s.id === studentId);
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updates } : s));
     
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.formClass !== undefined) dbUpdates.form_class = updates.formClass;
-    await supabase.from('students').update(dbUpdates).eq('id', studentId);
+    
+    const { error } = await supabase.from('students').update(dbUpdates).eq('id', studentId);
+    if (error) {
+      console.error("Error updating student:", error);
+      alert(`Failed to update student: ${error.message}`);
+      if (originalStudent) {
+        setStudents(prev => prev.map(s => s.id === studentId ? originalStudent : s));
+      }
+    }
   };
 
   const toggleAssignmentExpand = (id: string) => {
@@ -545,21 +624,21 @@ export const useDashboard = () => {
   };
 
   // --- Exam Handlers ---
-  const handleAddExam = async (e: FormEvent) => {
+  const handleAddExam = async (e: FormEvent): Promise<boolean> => {
     e.preventDefault();
-    if (!newExamTitle || selectedExamClasses.length === 0) return;
+    if (!newExamTitle || selectedExamClasses.length === 0) return false;
 
     const newExam: Exam = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateUUID(),
       title: newExamTitle,
       classIds: selectedExamClasses,
       maxScore: newExamMaxScore,
       results: []
     };
 
-    setExams([...exams, newExam]);
+    setExams(prev => [...prev, newExam]);
 
-    await supabase.from('exams').insert([{
+    const { error } = await supabase.from('exams').insert([{
       id: newExam.id,
       title: newExam.title,
       class_ids: newExam.classIds,
@@ -567,9 +646,51 @@ export const useDashboard = () => {
       user_id: session?.user.id
     }]);
 
-    setNewExamTitle("");
-    setNewExamMaxScore(100);
-    setSelectedExamClasses([]);
+    if (error) {
+      console.error("Error adding exam:", error);
+      alert(`Failed to add exam: ${error.message}`);
+      setExams(prev => prev.filter(e => e.id !== newExam.id));
+      return false;
+    } else {
+      setNewExamTitle("");
+      setNewExamMaxScore(100);
+      setSelectedExamClasses([]);
+      return true;
+    }
+  };
+
+  const handleUpdateExam = async (id: string, updates: { title?: string, maxScore?: number }): Promise<boolean> => {
+    const originalExam = exams.find(e => e.id === id);
+    setExams(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.maxScore !== undefined) dbUpdates.max_score = updates.maxScore;
+
+    const { error } = await supabase.from('exams').update(dbUpdates).eq('id', id);
+    if (error) {
+      console.error("Error updating exam:", error);
+      alert(`Failed to update exam: ${error.message}`);
+      if (originalExam) {
+        setExams(prev => prev.map(e => e.id === id ? originalExam : e));
+      }
+      return false;
+    }
+    return true;
+  };
+
+  const handleDeleteExam = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this exam?")) return;
+
+    setExams(prev => prev.filter(e => e.id !== id));
+    // Remove results locally
+    
+    const { error } = await supabase.from('exams').delete().eq('id', id);
+    if (error) {
+      console.error("Error deleting exam:", error);
+      alert(`Failed to delete exam: ${error.message}`);
+      // Ideally revert state here on error
+    }
   };
 
   const toggleExamClass = (classId: string) => {
@@ -654,6 +775,10 @@ export const useDashboard = () => {
     handleAddStudent,
     handleAddClass,
     handleAddAssignment,
+    handleUpdateAssignment,
+    handleDeleteAssignment,
+    handleUpdateExam,
+    handleDeleteExam,
     toggleAssignmentClass,
     startEditingClass,
     saveClassName,
