@@ -194,7 +194,7 @@ export const useDashboard = () => {
             id: s.id,
             name: s.name,
             classId: s.class_id,
-            formClass: s.form_class || "",
+            formClass: s.form_class || s.formClass || "",
             photoUrl: s.photo_url,
             manualPoints: s.manual_points || 0,
             points: points + (s.manual_points || 0),
@@ -349,33 +349,33 @@ export const useDashboard = () => {
     e.preventDefault();
     if (!newAssignmentTitle || selectedAssignmentClasses.length === 0) return false;
 
-    const newAssignment: Assignment = {
-      id: generateUUID(),
-      title: newAssignmentTitle,
-      classIds: selectedAssignmentClasses,
-      totalPoints: newAssignmentPoints,
-      submissions: []
-    };
+    try {
+      const { data, error } = await supabase.from('assignments').insert([{
+        id: generateUUID(),
+        title: newAssignmentTitle,
+        class_ids: selectedAssignmentClasses,
+        total_points: newAssignmentPoints,
+        user_id: session?.user.id
+      }]).select().single();
 
-    setAssignments(prev => [...prev, newAssignment]);
+      if (error) throw error;
 
-    const { error } = await supabase.from('assignments').insert([{
-      id: newAssignment.id,
-      title: newAssignment.title,
-      class_ids: newAssignment.classIds,
-      total_points: newAssignment.totalPoints,
-      user_id: session?.user.id
-    }]);
+      const newAssignment: Assignment = {
+        id: data.id,
+        title: data.title,
+        classIds: data.class_ids || [],
+        totalPoints: data.total_points,
+        submissions: []
+      };
 
-    if (error) {
-      console.error("Error adding assignment:", error);
-      alert(`Failed to add assignment: ${error.message}`);
-      setAssignments(prev => prev.filter(a => a.id !== newAssignment.id));
-      return false;
-    } else {
+      setAssignments(prev => [...prev, newAssignment]);
       setNewAssignmentTitle("");
       setSelectedAssignmentClasses([]);
       return true;
+    } catch (error: any) {
+      console.error("Error adding assignment:", error);
+      alert(`Failed to add assignment: ${error.message}`);
+      return false;
     }
   };
 
