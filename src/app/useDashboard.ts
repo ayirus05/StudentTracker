@@ -74,6 +74,7 @@ export const useDashboard = () => {
   // Selection State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedStudentForStats, setSelectedStudentForStats] = useState<string | null>(null);
+  const [selectedAssignmentViewClassId, setSelectedAssignmentViewClassId] = useState<string | null>(null);
 
   // Form State
   const [newStudentName, setNewStudentName] = useState("");
@@ -254,6 +255,11 @@ export const useDashboard = () => {
       count: assignments.filter(a => a.classIds.includes(cls.id)).length
     }));
   }, [classes, assignments]);
+
+  const filteredAssignments = useMemo(() => {
+    if (!selectedAssignmentViewClassId) return assignments;
+    return assignments.filter(a => a.classIds.includes(selectedAssignmentViewClassId));
+  }, [assignments, selectedAssignmentViewClassId]);
 
   const totalStudents = students.length;
   const totalAssignments = assignments.length;
@@ -749,9 +755,11 @@ export const useDashboard = () => {
     classes,
     students,
     assignments,
+    filteredAssignments,
     exams,
     selectedClassId, setSelectedClassId,
     selectedStudentForStats, setSelectedStudentForStats,
+    selectedAssignmentViewClassId, setSelectedAssignmentViewClassId,
     newStudentName, setNewStudentName,
     newStudentFormClass, setNewStudentFormClass,
     newStudentPhoto, setNewStudentPhoto,
