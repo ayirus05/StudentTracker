@@ -48,6 +48,8 @@ export default function Dashboard() {
     assignments,
     exams,
     selectedClassId, setSelectedClassId,
+    filteredAssignments,
+    selectedAssignmentViewClassId, setSelectedAssignmentViewClassId,
     selectedStudentForStats, setSelectedStudentForStats,
     newStudentName, setNewStudentName,
     newStudentFormClass, setNewStudentFormClass,
@@ -427,21 +429,23 @@ export default function Dashboard() {
               </form>
             </div>
 
+            <div className="flex items-center gap-4">
+              <label htmlFor="assignment-class-filter" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Filter by Class:</label>
+              <select 
+                id="assignment-class-filter"
+                value={selectedAssignmentViewClassId || ""} 
+                onChange={(e) => setSelectedAssignmentViewClassId(e.target.value || null)}
+                className="px-4 py-2 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-700"
+              >
+                <option value="">All Classes</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="grid gap-4">
-              {selectedClassId && (
-                <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                  <span className="text-sm text-indigo-900 dark:text-indigo-200">
-                    Filtering by: <span className="font-bold">{classes.find(c => c.id === selectedClassId)?.name}</span>
-                  </span>
-                  <button 
-                    onClick={() => setSelectedClassId(null)}
-                    className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    Clear Filter
-                  </button>
-                </div>
-              )}
-              {assignments.filter(a => !selectedClassId || a.classIds.includes(selectedClassId)).map(assignment => (
+              {filteredAssignments.map(assignment => (
                 <div key={assignment.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
                   {editingAssignmentId === assignment.id ? (
                     <div className="p-4 flex items-center gap-4" onClick={e => e.stopPropagation()}>
@@ -568,8 +572,8 @@ export default function Dashboard() {
                   )}
                 </div>
               ))}
-              {assignments.filter(a => !selectedClassId || a.classIds.includes(selectedClassId)).length === 0 && (
-                <p className="text-center text-zinc-500 py-8">{selectedClassId ? "No assignments found for this class." : "No assignments created yet."}</p>
+              {filteredAssignments.length === 0 && (
+                <p className="text-center text-zinc-500 py-8">{selectedAssignmentViewClassId ? "No assignments found for this class." : "No assignments created yet."}</p>
               )}
             </div>
           </div>
