@@ -574,6 +574,37 @@ export const useDashboard = () => {
     }
   };
 
+  const handleImportStudents = async (studentsToImport: { name: string, formClass: string, classId: string }[]) => {
+    const dbPayload = studentsToImport.map(student => ({
+      id: generateUUID(),
+      name: student.name,
+      form_class: student.formClass,
+      class_id: student.classId,
+      manual_points: 0,
+      user_id: session?.user.id
+    }));
+
+    const newStudents: Student[] = dbPayload.map(s => ({
+      id: s.id,
+      name: s.name,
+      classId: s.class_id,
+      formClass: s.form_class,
+      points: 0,
+      assignmentsCompleted: 0,
+      manualPoints: 0,
+    }));
+
+    setStudents(prev => [...prev, ...newStudents]);
+
+    const { error } = await supabase.from('students').insert(dbPayload);
+
+    if (error) {
+      console.error("Error importing students:", error);
+      alert(`Failed to import students: ${error.message}`);
+      setStudents(prev => prev.filter(s => !newStudents.some(ns => ns.id === s.id)));
+    }
+  };
+
   const toggleAssignmentExpand = (id: string) => {
     setExpandedAssignmentId(expandedAssignmentId === id ? null : id);
   };
@@ -801,6 +832,7 @@ export const useDashboard = () => {
     handleExamScoreChange,
     getStudentExamData,
     handleDeleteStudent,
-    handleUpdateStudent
+    handleUpdateStudent,
+    handleImportStudents
   };
 };

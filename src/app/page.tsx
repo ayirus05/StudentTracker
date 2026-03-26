@@ -16,7 +16,8 @@ import {
   Menu,
   LogOut,
   Dices,
-  Trash2
+  Trash2,
+  Upload
 } from "lucide-react";
 import Auth from "./Auth";
 import { 
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [editExamTitle, setEditExamTitle] = useState("");
   const [editExamMaxScore, setEditExamMaxScore] = useState<number>(0);
+  const [importMessage, setImportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const {
     session,
     authLoading,
@@ -89,7 +91,8 @@ export default function Dashboard() {
     handleExamScoreChange,
     getStudentExamData,
     handleDeleteStudent,
-    handleUpdateStudent
+    handleUpdateStudent,
+    handleImportStudents
   } = useDashboard();
 
   const handleSaveClass = (e: any) => {
@@ -374,6 +377,64 @@ export default function Dashboard() {
                       Add Student
                     </button>
                   </form>
+
+                  <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
+                      <Upload size={16} /> Import Students from CSV
+                    </h4>
+                    <p className="text-xs text-zinc-500 mb-4">
+                      Upload a CSV file (e.g., exported from Excel) with columns: <strong>Name, FormClass</strong>
+                    </p>
+                    <input 
+                      type="file" 
+                      accept=".csv"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        const text = await file.text();
+                        const rows = text.split(/\r?\n/);
+                        const studentsToImport = [];
+                        
+                        // Assuming the first row is headers
+                        for (let i = 1; i < rows.length; i++) {
+                          const row = rows[i].split(',');
+                          if (row.length >= 1 && row[0].trim()) {
+                            studentsToImport.push({
+                              name: row[0].trim(),
+                              formClass: row[1] ? row[1].trim() : '',
+                              classId: selectedClassId!
+                            });
+                          }
+                        }
+                        
+                        if (studentsToImport.length > 0) {
+                          if (handleImportStudents) {
+                            await handleImportStudents(studentsToImport);
+                            setImportMessage({ type: 'success', text: `Successfully imported ${studentsToImport.length} students!` });
+                            setTimeout(() => setImportMessage(null), 5000);
+                          } else {
+                            setImportMessage({ type: 'error', text: "handleImportStudents is not implemented in useDashboard yet." });
+                            setTimeout(() => setImportMessage(null), 5000);
+                          }
+                        } else {
+                          setImportMessage({ type: 'error', text: "No valid student data found in the CSV." });
+                          setTimeout(() => setImportMessage(null), 5000);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400 cursor-pointer"
+                    />
+                    {importMessage && (
+                      <div className={`mt-4 p-3 rounded-lg text-sm font-medium animate-in fade-in duration-300 ${
+                        importMessage.type === 'success' 
+                          ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                          : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {importMessage.text}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <StudentTable 
@@ -615,7 +676,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                  {students.filter(s => s.classId === selectedClassId).map(student => (
+                  {students
+                    .filter(s => s.classId === selectedClassId)
+                    .sort((a, b) => b.points - a.points)
+                    .map(student => (
                     <div key={student.id} className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-col gap-4 transition-all hover:shadow-md">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-full bg-zinc-200 overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-white dark:border-zinc-600 shadow-sm">
@@ -623,7 +687,7 @@ export default function Dashboard() {
                         </div>
                         <div>
                           <p className="font-bold text-zinc-900 dark:text-zinc-100">{student.name}</p>
-                          <p className="text-xs text-zinc-500">Points: <span className="font-bold text-indigo-600">{student.manualPoints || 0}</span></p>
+                          <p className="text-xs text-zinc-500">Total Points: <span className="font-bold text-indigo-600">{student.points}</span></p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 shadow-sm">
