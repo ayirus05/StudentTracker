@@ -92,7 +92,8 @@ export default function Dashboard() {
     getStudentExamData,
     handleDeleteStudent,
     handleUpdateStudent,
-    handleImportStudents
+    handleImportStudents,
+    handleDeleteClass
   } = useDashboard();
 
   const handleSaveClass = (e: any) => {
@@ -321,10 +322,21 @@ export default function Dashboard() {
                     ) : (
                       <div className="flex items-center justify-between">
                         <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{cls.name}</h3>
-                        <button 
-                          onClick={(e) => startEditingClass(cls, e)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-indigo-600 transition-all"
-                        ><Pencil size={16} /></button>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => startEditingClass(cls, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-indigo-600 transition-all"
+                          ><Pencil size={16} /></button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Are you sure you want to delete this class? All associated students will also be removed.")) {
+                                handleDeleteClass(cls.id);
+                              }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-red-600 transition-all"
+                          ><Trash2 size={16} /></button>
+                        </div>
                       </div>
                     )}
                     <p className="text-sm text-zinc-500 mt-2">Click to manage students</p>
@@ -678,7 +690,25 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                   {students
                     .filter(s => s.classId === selectedClassId)
-                    .sort((a, b) => b.points - a.points)
+                    .sort((a, b) => {
+                      const matchA = a.name.match(/\d+/);
+                      const matchB = b.name.match(/\d+/);
+                      const numA = matchA ? parseInt(matchA[0], 10) : null;
+                      const numB = matchB ? parseInt(matchB[0], 10) : null;
+
+                      if (numA !== null && numB !== null) {
+                        if (numA === numB) {
+                          return b.points - a.points;
+                        }
+                        return numA - numB;
+                      } else if (numA !== null) {
+                        return -1;
+                      } else if (numB !== null) {
+                        return 1;
+                      } else {
+                        return b.points - a.points;
+                      }
+                    })
                     .map(student => (
                     <div key={student.id} className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-col gap-4 transition-all hover:shadow-md">
                       <div className="flex items-center gap-3">

@@ -605,6 +605,35 @@ export const useDashboard = () => {
     }
   };
 
+  const handleDeleteClass = async (classId: string) => {
+    // Optimistic UI updates
+    setClasses(prev => prev.filter(c => c.id !== classId));
+    setStudents(prev => prev.filter(s => s.classId !== classId));
+    setAssignments(prev => prev.map(assignment => ({
+      ...assignment,
+      classIds: assignment.classIds.filter(id => id !== classId)
+    })));
+    setExams(prev => prev.map(exam => ({
+      ...exam,
+      classIds: exam.classIds.filter(id => id !== classId)
+    })));
+
+    if (selectedClassId === classId) {
+      setSelectedClassId(null);
+    }
+
+    // Supabase delete operation
+    // Note: For this to work correctly, you should have cascading deletes set up on your 'students', 
+    // 'submissions', and 'exam_results' tables in Supabase that reference the 'classes' table.
+    const { error } = await supabase.from('classes').delete().eq('id', classId);
+
+    if (error) {
+      console.error("Error deleting class:", error);
+      alert(`Failed to delete class: ${error.message}`);
+      // A full implementation would revert the optimistic UI updates here.
+    }
+  };
+
   const toggleAssignmentExpand = (id: string) => {
     setExpandedAssignmentId(expandedAssignmentId === id ? null : id);
   };
@@ -833,6 +862,7 @@ export const useDashboard = () => {
     getStudentExamData,
     handleDeleteStudent,
     handleUpdateStudent,
-    handleImportStudents
+    handleImportStudents,
+    handleDeleteClass
   };
 };
